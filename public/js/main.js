@@ -20,7 +20,6 @@ const messageDiv = document.getElementById('message');
 const searchInput = document.getElementById('searchAnime');
 const animeListDiv = document.getElementById('animeList');
 
-// Toggle Mode
 listModeBtn.addEventListener('click', () => {
     listModeBtn.classList.add('active');
     addModeBtn.classList.remove('active');
@@ -61,7 +60,8 @@ function resetForm() {
     document.getElementById('latestEpisode').value = '';
     document.getElementById('uploadDate').value = '';
     document.getElementById('scheduleDay').value = '';
-    document.getElementById('scheduleStatus').value = 'Sudah Tayang';
+    document.getElementById('scheduleStatus').value = '';
+    document.getElementById('isTrending').checked = false;
     animeIdInput.value = '';
     
     episodesContainer.innerHTML = `
@@ -104,7 +104,7 @@ function renderAnimeList(animeList) {
             <div class="anime-card-left">
                 <img src="${anime.cover}" onerror="this.src='https://placehold.co/60x85/1a1a1a/888?text=No+Image'" class="anime-card-img">
                 <div class="anime-card-info">
-                    <h3>${escapeHtml(anime.title)}</h3>
+                    <h3>${escapeHtml(anime.title)} ${anime.isTrending ? '🔥' : ''}</h3>
                     <p>⭐ ${anime.rating} | 👁️ ${anime.views} | Eps ${anime.latestEpisode}</p>
                     <p class="anime-genre">${anime.genre.join(', ')}</p>
                 </div>
@@ -135,7 +135,8 @@ window.editAnime = async (id) => {
         document.getElementById('latestEpisode').value = anime.latestEpisode;
         document.getElementById('uploadDate').value = anime.uploadDate;
         document.getElementById('scheduleDay').value = anime.scheduleDay || '';
-        document.getElementById('scheduleStatus').value = anime.scheduleStatus || 'Sudah Tayang';
+        document.getElementById('scheduleStatus').value = anime.scheduleStatus || '';
+        document.getElementById('isTrending').checked = anime.isTrending || false;
         animeIdInput.value = anime.id;
         
         episodesContainer.innerHTML = '';
@@ -144,7 +145,6 @@ window.editAnime = async (id) => {
             episodeCount++;
             const episodeDiv = document.createElement('div');
             episodeDiv.className = 'episode-item';
-            episodeDiv.setAttribute('data-index', idx);
             episodeDiv.innerHTML = `
                 <h4>Episode ${ep.number}</h4>
                 <div class="form-row">
@@ -160,7 +160,6 @@ window.editAnime = async (id) => {
                 <button type="button" class="remove-episode" style="background:#e94560; border:none; padding:4px 8px; border-radius:6px; color:white; cursor:pointer; margin-top:8px;">🗑️ Hapus Episode</button>
             `;
             episodesContainer.appendChild(episodeDiv);
-            
             episodeDiv.querySelector('.remove-episode').addEventListener('click', () => {
                 episodeDiv.remove();
                 renumberEpisodes();
@@ -169,12 +168,10 @@ window.editAnime = async (id) => {
         
         formTitle.innerText = '✏️ Edit Anime';
         cancelEditBtn.style.display = 'inline-block';
-        
         listModeBtn.classList.remove('active');
         addModeBtn.classList.add('active');
         listMode.style.display = 'none';
         formMode.style.display = 'block';
-        
     } catch (err) {
         showMessage('Gagal load data anime', 'error');
     }
@@ -182,7 +179,6 @@ window.editAnime = async (id) => {
 
 window.deleteAnime = async (id) => {
     if (!confirm('Yakin ingin menghapus anime ini?')) return;
-    
     try {
         const res = await fetch(`/api/anime/${id}`, { method: 'DELETE' });
         const result = await res.json();
@@ -211,7 +207,6 @@ addEpisodeBtn.addEventListener('click', () => {
     episodeCount++;
     const episodeDiv = document.createElement('div');
     episodeDiv.className = 'episode-item';
-    episodeDiv.setAttribute('data-index', episodeCount - 1);
     episodeDiv.innerHTML = `
         <h4>Episode ${episodeCount}</h4>
         <div class="form-row">
@@ -227,7 +222,6 @@ addEpisodeBtn.addEventListener('click', () => {
         <button type="button" class="remove-episode" style="background:#e94560; border:none; padding:4px 8px; border-radius:6px; color:white; cursor:pointer; margin-top:8px;">🗑️ Hapus Episode</button>
     `;
     episodesContainer.appendChild(episodeDiv);
-    
     episodeDiv.querySelector('.remove-episode').addEventListener('click', () => {
         episodeDiv.remove();
         renumberEpisodes();
@@ -237,9 +231,7 @@ addEpisodeBtn.addEventListener('click', () => {
 function renumberEpisodes() {
     const episodes = document.querySelectorAll('.episode-item');
     episodes.forEach((ep, idx) => {
-        const num = idx + 1;
-        ep.querySelector('h4').innerText = `Episode ${num}`;
-        ep.setAttribute('data-index', idx);
+        ep.querySelector('h4').innerText = `Episode ${idx + 1}`;
     });
     episodeCount = episodes.length;
 }
@@ -249,8 +241,7 @@ function getFormData() {
     const genre = genreRaw.split(',').map(g => g.trim()).filter(g => g);
     
     const episodes = [];
-    const episodeItems = document.querySelectorAll('.episode-item');
-    episodeItems.forEach((ep, idx) => {
+    document.querySelectorAll('.episode-item').forEach((ep, idx) => {
         const titleInput = ep.querySelector('.episode-title');
         const urlInput = ep.querySelector('.episode-url');
         if (titleInput && urlInput && titleInput.value && urlInput.value) {
@@ -273,7 +264,8 @@ function getFormData() {
         latestEpisode: parseInt(document.getElementById('latestEpisode').value),
         uploadDate: document.getElementById('uploadDate').value,
         scheduleDay: document.getElementById('scheduleDay').value || "",
-        scheduleStatus: document.getElementById('scheduleStatus').value,
+        scheduleStatus: document.getElementById('scheduleStatus').value || "",
+        isTrending: document.getElementById('isTrending').checked,
         episodes: episodes
     };
 }
@@ -289,26 +281,16 @@ closeModal.addEventListener('click', () => {
 });
 
 window.addEventListener('click', (e) => {
-    if (e.target === previewModal) {
-        previewModal.style.display = 'none';
-    }
+    if (e.target === previewModal) previewModal.style.display = 'none';
 });
 
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    
     const animeData = getFormData();
     
     if (animeData.episodes.length === 0) {
         showMessage('Minimal harus ada 1 episode!', 'error');
         return;
-    }
-    
-    for (const ep of animeData.episodes) {
-        if (!ep.title || !ep.videoUrl) {
-            showMessage('Semua episode harus diisi judul dan URL video!', 'error');
-            return;
-        }
     }
     
     submitBtn.disabled = true;
@@ -317,7 +299,6 @@ form.addEventListener('submit', async (e) => {
     try {
         let url = '/api/anime';
         let method = 'POST';
-        
         if (isEditMode && editingId) {
             url = `/api/anime/${editingId}`;
             method = 'PUT';
@@ -330,7 +311,6 @@ form.addEventListener('submit', async (e) => {
         });
         
         const result = await res.json();
-        
         if (res.ok) {
             showMessage(`✅ ${result.message}`, 'success');
             resetForm();
@@ -355,18 +335,14 @@ searchInput.addEventListener('input', async () => {
     const query = searchInput.value.toLowerCase();
     const res = await fetch('/api/anime');
     let animeList = await res.json();
-    if (query) {
-        animeList = animeList.filter(a => a.title.toLowerCase().includes(query));
-    }
+    if (query) animeList = animeList.filter(a => a.title.toLowerCase().includes(query));
     renderAnimeList(animeList);
 });
 
 function showMessage(msg, type) {
     messageDiv.className = `message ${type}`;
     messageDiv.innerText = msg;
-    setTimeout(() => {
-        messageDiv.className = 'message';
-    }, 5000);
+    setTimeout(() => messageDiv.className = 'message', 5000);
 }
 
 loadAnimeList();
