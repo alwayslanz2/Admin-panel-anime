@@ -85,11 +85,30 @@ app.post('/api/anime', async (req, res) => {
     try {
         const newAnime = req.body;
         
-        const requiredFields = ['title', 'cover', 'synopsis', 'genre', 'studio', 'rating', 'views', 'latestEpisode', 'uploadDate', 'scheduleDay', 'scheduleStatus', 'episodes'];
+        // Validasi field WAJIB (tanpa scheduleDay & scheduleStatus)
+        const requiredFields = ['title', 'cover', 'synopsis', 'genre', 'studio', 'rating', 'views', 'latestEpisode', 'uploadDate', 'episodes'];
         for (const field of requiredFields) {
-            if (!newAnime[field]) {
+            if (!newAnime[field] || (typeof newAnime[field] === 'string' && newAnime[field].trim() === '')) {
                 return res.status(400).json({ error: `Field '${field}' wajib diisi` });
             }
+        }
+        
+        // Validasi rating harus angka
+        if (isNaN(newAnime.rating) || newAnime.rating < 0 || newAnime.rating > 10) {
+            return res.status(400).json({ error: 'Rating harus angka antara 0-10' });
+        }
+        
+        // Validasi episodes minimal 1
+        if (!newAnime.episodes || newAnime.episodes.length === 0) {
+            return res.status(400).json({ error: 'Minimal harus ada 1 episode' });
+        }
+        
+        // Hapus scheduleDay & scheduleStatus jika empty string
+        if (newAnime.scheduleDay === '' || newAnime.scheduleDay === '-- Tidak dijadwalkan --') {
+            delete newAnime.scheduleDay;
+        }
+        if (newAnime.scheduleStatus === '' || newAnime.scheduleStatus === '-- Tidak ada status --') {
+            delete newAnime.scheduleStatus;
         }
         
         const { content, sha } = await getCurrentFile();
@@ -114,7 +133,22 @@ app.post('/api/anime', async (req, res) => {
 app.put('/api/anime/:id', async (req, res) => {
     try {
         const animeId = req.params.id;
-        const updatedAnime = req.body;
+        let updatedAnime = req.body;
+        
+        const requiredFields = ['title', 'cover', 'synopsis', 'genre', 'studio', 'rating', 'views', 'latestEpisode', 'uploadDate', 'episodes'];
+        for (const field of requiredFields) {
+            if (!updatedAnime[field] || (typeof updatedAnime[field] === 'string' && updatedAnime[field].trim() === '')) {
+                return res.status(400).json({ error: `Field '${field}' wajib diisi` });
+            }
+        }
+        
+        // Hapus scheduleDay & scheduleStatus jika empty string
+        if (updatedAnime.scheduleDay === '' || updatedAnime.scheduleDay === '-- Tidak dijadwalkan --') {
+            delete updatedAnime.scheduleDay;
+        }
+        if (updatedAnime.scheduleStatus === '' || updatedAnime.scheduleStatus === '-- Tidak ada status --') {
+            delete updatedAnime.scheduleStatus;
+        }
         
         const { content, sha } = await getCurrentFile();
         let animeList = JSON.parse(content);
