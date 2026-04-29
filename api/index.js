@@ -17,7 +17,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Konfigurasi GitHub
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const REPO = process.env.GITHUB_REPO;
 const FILE_PATH = process.env.GITHUB_FILE_PATH;
@@ -36,7 +35,6 @@ async function getCurrentFile() {
             sha: res.data.sha
         };
     } catch (err) {
-        console.error('Gagal ambil file:', err.response?.data || err.message);
         throw new Error('Gagal mengambil data dari GitHub');
     }
 }
@@ -49,43 +47,38 @@ async function updateFile(content, sha, commitMessage) {
         sha: sha,
         branch: 'main'
     };
-    
     const res = await axios.put(API_URL, payload, { headers: githubHeaders });
     return res.data;
 }
 
-// GET: Ambil semua anime
+// GET semua anime
 app.get('/api/anime', async (req, res) => {
     try {
         const { content } = await getCurrentFile();
-        const animeList = JSON.parse(content);
-        res.json(animeList);
+        res.json(JSON.parse(content));
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// GET: Ambil 1 anime by ID
+// GET anime by ID
 app.get('/api/anime/:id', async (req, res) => {
     try {
         const { content } = await getCurrentFile();
         const animeList = JSON.parse(content);
         const anime = animeList.find(a => a.id === req.params.id);
-        if (!anime) {
-            return res.status(404).json({ error: 'Anime tidak ditemukan' });
-        }
+        if (!anime) return res.status(404).json({ error: 'Anime tidak ditemukan' });
         res.json(anime);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// POST: Tambah anime baru
+// POST tambah anime
 app.post('/api/anime', async (req, res) => {
     try {
         const newAnime = req.body;
         
-        // Validasi field WAJIB (tanpa scheduleDay & scheduleStatus)
         const requiredFields = ['title', 'cover', 'synopsis', 'genre', 'studio', 'rating', 'views', 'latestEpisode', 'uploadDate', 'episodes'];
         for (const field of requiredFields) {
             if (!newAnime[field] || (typeof newAnime[field] === 'string' && newAnime[field].trim() === '')) {
@@ -93,23 +86,12 @@ app.post('/api/anime', async (req, res) => {
             }
         }
         
-        // Validasi rating harus angka
-        if (isNaN(newAnime.rating) || newAnime.rating < 0 || newAnime.rating > 10) {
-            return res.status(400).json({ error: 'Rating harus angka antara 0-10' });
-        }
+        // Hapus scheduleDay & scheduleStatus jika kosong
+        if (!newAnime.scheduleDay || newAnime.scheduleDay === '') delete newAnime.scheduleDay;
+        if (!newAnime.scheduleStatus || newAnime.scheduleStatus === '') delete newAnime.scheduleStatus;
         
-        // Validasi episodes minimal 1
-        if (!newAnime.episodes || newAnime.episodes.length === 0) {
-            return res.status(400).json({ error: 'Minimal harus ada 1 episode' });
-        }
-        
-        // Hapus scheduleDay & scheduleStatus jika empty string
-        if (newAnime.scheduleDay === '' || newAnime.scheduleDay === '-- Tidak dijadwalkan --') {
-            delete newAnime.scheduleDay;
-        }
-        if (newAnime.scheduleStatus === '' || newAnime.scheduleStatus === '-- Tidak ada status --') {
-            delete newAnime.scheduleStatus;
-        }
+        // Default isTrending = false jika tidak ada
+        if (newAnime.isTrending === undefined) newAnime.isTrending = false;
         
         const { content, sha } = await getCurrentFile();
         let animeList = JSON.parse(content);
@@ -118,18 +100,15 @@ app.post('/api/anime', async (req, res) => {
         newAnime.id = (maxId + 1).toString();
         
         animeList.push(newAnime);
-        
-        const updatedContent = JSON.stringify(animeList, null, 2);
-        await updateFile(updatedContent, sha, `Add anime: ${newAnime.title}`);
+        await updateFile(JSON.stringify(animeList, null, 2), sha, `Add anime: ${newAnime.title}`);
         
         res.json({ success: true, id: newAnime.id, message: 'Anime berhasil ditambahkan' });
     } catch (err) {
-        console.error('Error:', err);
         res.status(500).json({ error: err.message });
     }
 });
 
-// PUT: Edit anime berdasarkan ID
+// PUT edit anime
 app.put('/api/anime/:id', async (req, res) => {
     try {
         const animeId = req.params.id;
@@ -142,61 +121,44 @@ app.put('/api/anime/:id', async (req, res) => {
             }
         }
         
-        // Hapus scheduleDay & scheduleStatus jika empty string
-        if (updatedAnime.scheduleDay === '' || updatedAnime.scheduleDay === '-- Tidak dijadwalkan --') {
-            delete updatedAnime.scheduleDay;
-        }
-        if (updatedAnime.scheduleStatus === '' || updatedAnime.scheduleStatus === '-- Tidak ada status --') {
-            delete updatedAnime.scheduleStatus;
-        }
+        if (!updatedAnime.scheduleDay || updatedAnime.scheduleDay === '') delete updatedAnime.scheduleDay;
+        if (!updatedAnime.scheduleStatus || updatedAnime.scheduleStatus === '') delete updatedAnime.scheduleStatus;
+        if (updatedAnime.isTrending === undefined) updatedAnime.isTrending = false;
         
         const { content, sha } = await getCurrentFile();
         let animeList = JSON.parse(content);
         
         const index = animeList.findIndex(a => a.id === animeId);
-        if (index === -1) {
-            return res.status(404).json({ error: 'Anime tidak ditemukan' });
-        }
+        if (index === -1) return res.status(404).json({ error: 'Anime tidak ditemukan' });
         
         updatedAnime.id = animeId;
         animeList[index] = updatedAnime;
         
-        const updatedContent = JSON.stringify(animeList, null, 2);
-        await updateFile(updatedContent, sha, `Edit anime: ${updatedAnime.title}`);
-        
+        await updateFile(JSON.stringify(animeList, null, 2), sha, `Edit anime: ${updatedAnime.title}`);
         res.json({ success: true, message: 'Anime berhasil diupdate' });
     } catch (err) {
-        console.error('Error:', err);
         res.status(500).json({ error: err.message });
     }
 });
 
-// DELETE: Hapus anime berdasarkan ID
+// DELETE anime
 app.delete('/api/anime/:id', async (req, res) => {
     try {
         const animeId = req.params.id;
-        
         const { content, sha } = await getCurrentFile();
         let animeList = JSON.parse(content);
         
         const deletedAnime = animeList.find(a => a.id === animeId);
-        if (!deletedAnime) {
-            return res.status(404).json({ error: 'Anime tidak ditemukan' });
-        }
+        if (!deletedAnime) return res.status(404).json({ error: 'Anime tidak ditemukan' });
         
         const newAnimeList = animeList.filter(a => a.id !== animeId);
-        
-        const updatedContent = JSON.stringify(newAnimeList, null, 2);
-        await updateFile(updatedContent, sha, `Delete anime: ${deletedAnime.title}`);
-        
+        await updateFile(JSON.stringify(newAnimeList, null, 2), sha, `Delete anime: ${deletedAnime.title}`);
         res.json({ success: true, message: 'Anime berhasil dihapus' });
     } catch (err) {
-        console.error('Error:', err);
         res.status(500).json({ error: err.message });
     }
 });
 
-// Catch all untuk SPA
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/index.html'));
 });
