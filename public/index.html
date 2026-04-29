@@ -20,7 +20,6 @@
             <button id="addModeBtn" class="mode-btn">➕ Tambah Anime</button>
         </div>
 
-        <!-- LIST MODE -->
         <div id="listMode" class="list-container">
             <div class="search-bar">
                 <input type="text" id="searchAnime" placeholder="Cari anime...">
@@ -30,7 +29,6 @@
             </div>
         </div>
 
-        <!-- ADD/EDIT MODE -->
         <div id="formMode" style="display: none;">
             <div class="form-container">
                 <div class="form-header">
@@ -49,7 +47,6 @@
                         <div class="form-group">
                             <label>Cover URL *</label>
                             <input type="url" id="cover" placeholder="https://..." required>
-                            <small>Gunakan URL gambar (TMDB, Imgur, dll)</small>
                         </div>
                         <div class="form-group">
                             <label>Sinopsis *</label>
@@ -57,8 +54,8 @@
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Genre * (pisah dengan koma)</label>
-                                <input type="text" id="genre" placeholder="Action, Drama, Fantasy" required>
+                                <label>Genre * (pisah koma)</label>
+                                <input type="text" id="genre" placeholder="Action, Drama" required>
                             </div>
                             <div class="form-group">
                                 <label>Studio *</label>
@@ -67,7 +64,7 @@
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Rating * (1-10)</label>
+                                <label>Rating *</label>
                                 <input type="number" id="rating" step="0.01" min="0" max="10" required>
                             </div>
                             <div class="form-group">
@@ -87,9 +84,9 @@
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Schedule Day (Kosongkan jika sudah tamat)</label>
+                                <label>Schedule Day (kosongkan jika tamat)</label>
                                 <select id="scheduleDay">
-                                    <option value="">-- Kosongkan (sudah tamat) --</option>
+                                    <option value="">-- Kosongkan (tamat) --</option>
                                     <option value="Senin">Senin</option>
                                     <option value="Selasa">Selasa</option>
                                     <option value="Rabu">Rabu</option>
@@ -98,17 +95,22 @@
                                     <option value="Sabtu">Sabtu</option>
                                     <option value="Minggu">Minggu</option>
                                 </select>
-                                <small>Pilih hari jika masih tayang, kosongkan jika anime sudah tamat</small>
                             </div>
                             <div class="form-group">
-                                <label>Schedule Status (Kosongkan jika sudah tamat)</label>
+                                <label>Schedule Status</label>
                                 <select id="scheduleStatus">
-                                    <option value="">-- Kosongkan (sudah tamat) --</option>
+                                    <option value="">-- Kosongkan (tamat) --</option>
                                     <option value="Sudah Tayang">Sudah Tayang</option>
                                     <option value="Menunggu Update">Menunggu Update</option>
                                 </select>
-                                <small>Isi hanya jika masih tayang</small>
                             </div>
+                        </div>
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="checkbox" id="isTrending" style="width: 20px; height: 20px; margin: 0;">
+                                🔥 Masukkan ke Trending Now
+                            </label>
+                            <small>Centang jika anime ini baru rilis atau sedang trending</small>
                         </div>
                     </div>
 
