@@ -345,4 +345,101 @@ function showMessage(msg, type) {
     setTimeout(() => messageDiv.className = 'message', 5000);
 }
 
+// ========== MAINTENANCE MODE ==========
+async function checkMaintenanceStatus() {
+    try {
+        const res = await fetch('/api/maintenance/status');
+        const data = await res.json();
+        const statusDiv = document.getElementById('maintenanceStatus');
+        if (statusDiv) {
+            if (data.maintenance_mode) {
+                statusDiv.innerHTML = '<span style="color:#e94560;">🔴 Mode Maintenance AKTIF - Website tidak bisa diakses publik</span>';
+            } else {
+                statusDiv.innerHTML = '<span style="color:#00b894;">🟢 Mode Maintenance NONAKTIF - Website normal</span>';
+            }
+        }
+    } catch(e) { console.error('Gagal cek maintenance status:', e); }
+}
+
+const maintenanceOnBtn = document.getElementById('maintenanceOnBtn');
+const maintenanceOffBtn = document.getElementById('maintenanceOffBtn');
+const updateCodeBtn = document.getElementById('updateCodeBtn');
+
+if (maintenanceOnBtn) {
+    maintenanceOnBtn.addEventListener('click', async () => {
+        const accessCode = prompt('Masukkan kode akses maintenance:');
+        if (!accessCode) return;
+        try {
+            const res = await fetch('/api/maintenance/toggle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'on', accessCode: accessCode })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert('✅ Maintenance mode AKTIF');
+                checkMaintenanceStatus();
+            } else {
+                alert('❌ ' + data.error);
+            }
+        } catch(e) { alert('Error: ' + e.message); }
+    });
+}
+
+if (maintenanceOffBtn) {
+    maintenanceOffBtn.addEventListener('click', async () => {
+        const accessCode = prompt('Masukkan kode akses maintenance:');
+        if (!accessCode) return;
+        try {
+            const res = await fetch('/api/maintenance/toggle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'off', accessCode: accessCode })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert('✅ Maintenance mode NONAKTIF');
+                checkMaintenanceStatus();
+            } else {
+                alert('❌ ' + data.error);
+            }
+        } catch(e) { alert('Error: ' + e.message); }
+    });
+}
+
+if (updateCodeBtn) {
+    updateCodeBtn.addEventListener('click', async () => {
+        const oldCode = document.getElementById('oldAccessCode').value;
+        const newCode = document.getElementById('newAccessCode').value;
+        
+        if (!oldCode || !newCode) {
+            alert('Isi kode akses lama dan baru');
+            return;
+        }
+        
+        if (newCode.length < 4) {
+            alert('Kode akses baru minimal 4 karakter');
+            return;
+        }
+        
+        try {
+            const res = await fetch('/api/maintenance/update-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ oldCode: oldCode, newCode: newCode })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert('✅ ' + data.message);
+                document.getElementById('oldAccessCode').value = '';
+                document.getElementById('newAccessCode').value = '';
+            } else {
+                alert('❌ ' + data.error);
+            }
+        } catch(e) { alert('Error: ' + e.message); }
+    });
+}
+
+// Panggil saat load
+checkMaintenanceStatus();
 loadAnimeList();
