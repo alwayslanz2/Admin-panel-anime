@@ -20,6 +20,7 @@
             <button id="addModeBtn" class="mode-btn">➕ Tambah Anime</button>
         </div>
 
+        <!-- LIST MODE -->
         <div id="listMode" class="list-container">
             <div class="search-bar">
                 <input type="text" id="searchAnime" placeholder="Cari anime...">
@@ -29,6 +30,7 @@
             </div>
         </div>
 
+        <!-- ADD/EDIT MODE -->
         <div id="formMode" style="display: none;">
             <div class="form-container">
                 <div class="form-header">
@@ -140,6 +142,24 @@
                     </div>
                 </form>
             </div>
+        </div>
+
+        <!-- Maintenance Section -->
+        <div class="form-section">
+            <h3>🔧 Maintenance Mode</h3>
+            <div class="maintenance-toggle" style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+                <button id="maintenanceOnBtn" style="background: #e94560; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer;">🔴 Aktifkan Maintenance</button>
+                <button id="maintenanceOffBtn" style="background: #00b894; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer;">🟢 Nonaktifkan Maintenance</button>
+            </div>
+            <div id="maintenanceStatus" style="padding: 12px; background: #1a1a1a; border-radius: 8px; text-align: center; margin-bottom: 16px;"></div>
+            
+            <h4>🔑 Ubah Kode Akses</h4>
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                <input type="password" id="oldAccessCode" placeholder="Kode akses lama" style="flex:1; padding: 10px; background: #1a1a1a; border: 1px solid #222; border-radius: 8px; color: white;">
+                <input type="text" id="newAccessCode" placeholder="Kode akses baru (min 4 karakter)" style="flex:1; padding: 10px; background: #1a1a1a; border: 1px solid #222; border-radius: 8px; color: white;">
+                <button id="updateCodeBtn" style="background: #f9ca24; color: #1a1a1a; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer;">🔄 Update Kode</button>
+            </div>
+            <small style="color: #666; display: block; margin-top: 8px;">Kode akses digunakan untuk bypass maintenance & toggle maintenance</small>
         </div>
 
         <div id="previewModal" class="modal">
