@@ -17,10 +17,12 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
+// Konfigurasi GitHub
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const REPO = process.env.GITHUB_REPO;
 const FILE_PATH = process.env.GITHUB_FILE_PATH;
 const API_URL = `https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`;
+const MAINTENANCE_JSON_URL = `https://api.github.com/repos/${REPO}/contents/frontend/data/maintenance.json`;
 
 const githubHeaders = {
     Authorization: `Bearer ${GITHUB_TOKEN}`,
@@ -49,6 +51,27 @@ async function updateFile(content, sha, commitMessage) {
     };
     const res = await axios.put(API_URL, payload, { headers: githubHeaders });
     return res.data;
+}
+
+async function getMaintenanceData() {
+    try {
+        const res = await axios.get(MAINTENANCE_JSON_URL, { headers: githubHeaders });
+        const content = Buffer.from(res.data.content, 'base64').toString('utf8');
+        const json = JSON.parse(content);
+        return { data: json, sha: res.data.sha };
+    } catch (err) {
+        return { data: { maintenance_mode: false, access_code: 'REU2024' }, sha: null };
+    }
+}
+
+async function setMaintenanceData(data, sha) {
+    const content = Buffer.from(JSON.stringify(data, null, 2), 'utf8').toString('base64');
+    await axios.put(MAINTENANCE_JSON_URL, {
+        message: `Update maintenance data`,
+        content: content,
+        sha: sha,
+        branch: 'main'
+    }, { headers: githubHeaders });
 }
 
 // GET semua anime
@@ -86,11 +109,8 @@ app.post('/api/anime', async (req, res) => {
             }
         }
         
-        // Hapus scheduleDay & scheduleStatus jika kosong
         if (!newAnime.scheduleDay || newAnime.scheduleDay === '') delete newAnime.scheduleDay;
         if (!newAnime.scheduleStatus || newAnime.scheduleStatus === '') delete newAnime.scheduleStatus;
-        
-        // Default isTrending = false jika tidak ada
         if (newAnime.isTrending === undefined) newAnime.isTrending = false;
         
         const { content, sha } = await getCurrentFile();
@@ -159,6 +179,64 @@ app.delete('/api/anime/:id', async (req, res) => {
     }
 });
 
+// ========== MAINTENANCE MODE ENDPOINTS ==========
+
+// GET status maintenance
+app.get('/api/maintenance/status', async (req, res) => {
+    try {
+        const { data } = await getMaintenanceData();
+        res.json({ 
+            maintenance_mode: data.maintenance_mode,
+            access_code_exists: !!data.access_code
+        });
+    } catch (err) {
+        res.json({ maintenance_mode: false });
+    }
+});
+
+// POST toggle maintenance
+app.post('/api/maintenance/toggle', async (req, res) => {
+    try {
+        const { action, accessCode } = req.body;
+        const { data, sha } = await getMaintenanceData();
+        
+        if (accessCode !== data.access_code) {
+            return res.status(401).json({ error: 'Kode akses salah' });
+        }
+        
+        data.maintenance_mode = (action === 'on');
+        await setMaintenanceData(data, sha);
+        
+        res.json({ success: true, maintenance_mode: data.maintenance_mode });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST update access code
+app.post('/api/maintenance/update-code', async (req, res) => {
+    try {
+        const { oldCode, newCode } = req.body;
+        const { data, sha } = await getMaintenanceData();
+        
+        if (oldCode !== data.access_code) {
+            return res.status(401).json({ error: 'Kode akses lama salah' });
+        }
+        
+        if (!newCode || newCode.length < 4) {
+            return res.status(400).json({ error: 'Kode akses baru minimal 4 karakter' });
+        }
+        
+        data.access_code = newCode;
+        await setMaintenanceData(data, sha);
+        
+        res.json({ success: true, message: 'Kode akses berhasil diubah' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Catch all untuk SPA
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/index.html'));
 });
